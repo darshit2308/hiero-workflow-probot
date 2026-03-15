@@ -24,30 +24,30 @@ export default (app) => {
   });
 
   // // Feature-2 (applying the tag, like that of documentaiot )
-  app.on(["pull_request.opened", "pull_request.reopened"], async (context) => {
-    // extract changed file (for bot)
-    const files = await context.octokit.pulls.listFiles(context.pullRequest());
-    // we iterate in all the files, if any has .md, we label as documentaion
-    const hasMarkdown = files.data.some((file) =>
-      file.filename.endsWith(".md"),
-    );
-    if (hasMarkdown) {
-      app.log.info("Markdown file detected! Adding documentation label.");
-      return context.octokit.issues.addLabels(
-        context.issue({ labels: ["documentation"] }),
-      );
-    } else {
-      app.log.info("No markdown files found. Skipping labels.");
-    }
-  });
+  // Writing this whole feature in the faeture 4
+
+  // app.on(["pull_request.opened", "pull_request.reopened"], async (context) => {
+  //   // extract changed file (for bot)
+  //   const files = await context.octokit.pulls.listFiles(context.pullRequest());
+  //   // we iterate in all the files, if any has .md, we label as documentaion
+  //   const hasMarkdown = files.data.some((file) =>
+  //     file.filename.endsWith(".md"),
+  //   );
+  //   if (hasMarkdown) {
+  //     app.log.info("Markdown file detected! Adding documentation label.");
+  //     return context.octokit.issues.addLabels(
+  //       context.issue({ labels: ["documentation"] }),
+  //     );
+  //   } else {
+  //     app.log.info("No markdown files found. Skipping labels.");
+  //   }
+  // });
 
   // Issue with this feature is, probot is fast, so it sends a request to guthub fastly, but github takes
   // time to fetch DB, so probot if just takes in initial value
   // Ex) if its my 1st pr, thenn probot fetches 0(instead of 1).
 
-  // ==========================================================
-  // FEATURE 3: THE MILESTONE TRACKER (Upgraded)
-  // ==========================================================
+  // Feature-3 THE MILESTONE TRACKER (Upgraded)
   app.on("pull_request.closed", async (context) => {
     const pr = context.payload.pull_request;
     if (!pr.merged) {
@@ -66,7 +66,7 @@ export default (app) => {
 
     let totalMerges = searchResult.data.total_count;
 
-    // 4. THE SENIOR FIX: Overcoming GitHub's Search Delay
+    // Overcoming GitHub's Search Delay
     // We check if GitHub's slow database included the PR we *just* merged
     const isIndexed = searchResult.data.items.some(
       (item) => item.number === pr.number,
@@ -102,4 +102,44 @@ export default (app) => {
       app.log.info("No milestone hit this time.");
     }
   });
+
+  // Feature 4: PR labelling
+
+  app.on(
+    ["pull_request.opened", "pull_request.reopened", "pull_request.edited"],
+    async (context) => {
+      const pr = context.payload.pull_request;
+      const title = pr.title;
+
+      // --- 1. THE LINTER ---
+      const titleRegex = /^(feat|fix|docs|chore): .+/;
+      const isTitleValid = titleRegex.test(title);
+
+      if (!isTitleValid) {
+        app.log.info(`Invalid PR title detected: "${title}"`);
+        await context.octokit.issues.createComment(
+          context.issue({
+            body: `🚫 **Invalid PR Title!** @${pr.user.login}, please rename this PR using [Conventional Commits](https://www.conventionalcommits.org/). \n\n**Example:** \`feat: add login button\`.`,
+          }),
+        );
+        await context.octokit.issues.addLabels(
+          context.issue({ labels: ["needs-title-update"] }),
+        );
+        // Note: We don't 'return' here anymore because we want the bot to keep checking for other things!
+      }
+
+      
+
+      // Feature 2 (Labelling the PR)
+      const files = await context.octokit.pulls.listFiles(context.pullRequest());
+      const hasMarkdown = files.data.some((file) => file.filename.endsWith(".md"));
+      
+      if (hasMarkdown) {
+        app.log.info("Markdown detected! Adding label.");
+        return context.octokit.issues.addLabels(
+          context.issue({ labels: ["documentation"] }),
+        );
+      }
+    },
+  );
 };
