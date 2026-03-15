@@ -128,12 +128,31 @@ export default (app) => {
         // Note: We don't 'return' here anymore because we want the bot to keep checking for other things!
       }
 
+      // Feature 5. THE SIZE CHECKER (Monster PR) ---
+      /**
+       * What happenes, is, that the contributors often push big PR's which is troublesome for the
+       * maintainers, so this leads for the review of PR to take weeks.
+       * So, what we try is , warn the contributor, that the PR is very big !
+       */
       
+      const totalChanges = pr.additions + pr.deletions;
+      if (totalChanges > 50) {
+        app.log.info(`Large PR detected: ${totalChanges} changes.`);
+        await context.octokit.issues.createComment(
+          context.issue({
+            body: `⚠️ **Large PR Detected!** (${totalChanges} changes). Consider breaking this into smaller PRs to help maintainers review faster.`,
+          }),
+        );
+      }
 
       // Feature 2 (Labelling the PR)
-      const files = await context.octokit.pulls.listFiles(context.pullRequest());
-      const hasMarkdown = files.data.some((file) => file.filename.endsWith(".md"));
-      
+      const files = await context.octokit.pulls.listFiles(
+        context.pullRequest(),
+      );
+      const hasMarkdown = files.data.some((file) =>
+        file.filename.endsWith(".md"),
+      );
+
       if (hasMarkdown) {
         app.log.info("Markdown detected! Adding label.");
         return context.octokit.issues.addLabels(
