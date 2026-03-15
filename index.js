@@ -110,8 +110,6 @@ export default (app) => {
     async (context) => {
       const pr = context.payload.pull_request;
       const title = pr.title;
-
-      // --- 1. THE LINTER ---
       const titleRegex = /^(feat|fix|docs|chore): .+/;
       const isTitleValid = titleRegex.test(title);
 
@@ -126,15 +124,24 @@ export default (app) => {
           context.issue({ labels: ["needs-title-update"] }),
         );
         // Note: We don't 'return' here anymore because we want the bot to keep checking for other things!
+      } else {
+        // if title becomes valid, we need to remove that 'need updatee' buton
+        try {
+          await context.octokit.issues.removeLabel(
+            context.issue({ name: "needs-title-update" }),
+          );
+          app.log.info("Title fixed! Removed label.");
+        } catch (e) {
+          // Label might not exist, that's fine!
+        }
       }
-
       // Feature 5. THE SIZE CHECKER (Monster PR) ---
       /**
        * What happenes, is, that the contributors often push big PR's which is troublesome for the
        * maintainers, so this leads for the review of PR to take weeks.
        * So, what we try is , warn the contributor, that the PR is very big !
        */
-      
+
       const totalChanges = pr.additions + pr.deletions;
       if (totalChanges > 50) {
         app.log.info(`Large PR detected: ${totalChanges} changes.`);
@@ -149,15 +156,46 @@ export default (app) => {
       const files = await context.octokit.pulls.listFiles(
         context.pullRequest(),
       );
+
+      const labels = [];
+
       const hasMarkdown = files.data.some((file) =>
         file.filename.endsWith(".md"),
       );
 
+      const hasJS = files.data.some(
+        (file) =>
+          file.filename.endsWith(".js") || file.filename.endsWith(".jsx"),
+      );
+
+      const hasCSS = files.data.some((file) => file.filename.endsWith(".css"));
+
+      const hasConfig = files.data.some(
+        (file) =>
+          file.filename.endsWith(".json") ||
+          file.filename.endsWith(".yml") ||
+          file.filename.endsWith(".yaml"),
+      );
+
       if (hasMarkdown) {
-        app.log.info("Markdown detected! Adding label.");
-        return context.octokit.issues.addLabels(
-          context.issue({ labels: ["documentation"] }),
-        );
+        labels.push("documentation");
+      }
+
+      if (hasJS) {
+        labels.push("javascript");
+      }
+
+      if (hasCSS) {
+        labels.push("styles");
+      }
+
+      if (hasConfig) {
+        labels.push("config");
+      }
+
+      if (labels.length > 0) {
+        app.log.info(`Adding labels: ${labels.join(", ")}`);
+        return context.octokit.issues.addLabels(context.issue({ labels }));
       }
     },
   );
