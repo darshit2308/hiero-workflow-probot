@@ -1,131 +1,63 @@
-# Hiero Workflow Probot
+Hiero Workflow Bot (Probot Service)
+A centralized, scalable GitHub App built with Probot to automate repository governance and contributor workflows across the Hiero ecosystem.
 
-A GitHub App built with **Probot** that automates contributor workflows and improves developer onboarding for the **Hiero ecosystem**.
+🏗 Architectural Vision
+Unlike traditional GitHub Actions that require duplicating .yml files across every repository, this bot operates as a centralized service.
 
-The bot listens to GitHub events such as issues and pull requests and performs helpful actions like welcoming contributors, labeling documentation PRs, and tracking contributor milestones.
+Horizontal Scalability: Install once at the Organization level to manage dozens of repositories from a single codebase.
 
----
+Feature Toggles: Repository-specific behavior is managed via a single .github/hiero.yml file, allowing maintainers to switch features on or off without touching the bot's core logic.
 
-# Features
+State Consistency: Implements custom verification logic to handle GitHub’s eventual consistency (search indexing delays), ensuring accurate contributor data even during high-velocity merges.
 
-## 1️⃣ Contributor Onboarding
+🚀 Core Features
+1. Intelligent Repository Governance
+PR Title Linter: Enforces Conventional Commits (feat:, fix:, chore:) to ensure clean, automated changelogs.
 
-When a user opens a new issue, the bot reads configuration from `.github/hiero.yml`.
+Large PR Warning: Automatically flags "Monster PRs" (size-configurable) to protect maintainer review bandwidth and encourage smaller, modular contributions.
 
-If a `welcome_message` is present, the bot automatically posts it as a comment.
+Auto-Labeling: Detects documentation changes (.md files) and applies relevant tags instantly to streamline the review queue.
 
-Example config:
+2. Contributor Onboarding & Gamification
+Dynamic Welcome: Pulls custom onboarding messages from repo-level config files.
 
-```
-welcome_message: |
-  👋 Welcome to Hiero!
-  Thank you for opening your first issue.
-  A maintainer will review it soon.
-```
+Milestone Tracking: Celebrates contributor growth at key intervals:
 
-This allows repositories to customize onboarding messages.
+1st Merge: Ecosystem Welcome.
 
----
+5th Merge: Core Contributor recognition.
 
-## 2️⃣ Automatic Documentation Labeling
+10th Merge: Legendary status.
 
-When a pull request is opened or reopened:
+🛠 Technical Implementation
+The "N-1" Indexing Fix
+The bot includes a "sage code" implementation to handle the Search Indexing Delay. When a PR is merged, the bot double-checks the GitHub search API against the current webhook payload. If the search results are lagging, the bot manually increments the count to provide real-time, accurate feedback to the user.
 
-* The bot checks all changed files
-* If any file ends with `.md`
-* The PR automatically gets the `documentation` label
+Configuration (.github/hiero.yml)
+Maintainers control the service per-repo with a simple YAML file:
 
-This helps maintainers quickly identify documentation contributions.
+YAML
+# Toggle features as a service
+welcome_message: "Welcome to the Hiero ecosystem! 🚀"
+enable_linter: true
+max_pr_size: 50
+💻 Local Development
+Installation
+Clone & Install:
 
----
-
-## 3️⃣ Contributor Milestone Tracker
-
-The bot celebrates contributor milestones by tracking merged pull requests.
-
-Milestones:
-
-* 🎉 **1 merged PR** → Welcome message
-* 🔥 **5 merged PRs** → Core contributor message
-* 🏆 **10 merged PRs** → Legendary contributor recognition
-
-Because GitHub's search index can be delayed, the bot includes a workaround to ensure the most recent merged PR is counted correctly.
-
----
-
-# Installation
-
-Clone the repository:
-
-```
+Bash
 git clone https://github.com/darshit2308/hiero-workflow-probot.git
 cd hiero-workflow-probot
-```
-
-Install dependencies:
-
-```
 npm install
-```
+Environment Setup: Create a .env file based on the Probot deployment guide.
 
-Start the Probot app:
+Run:
 
-```
+Bash
 npm start
-```
-
----
-
-# Configuration
-
-Add a configuration file in your repository:
-
-```
-.github/hiero.yml
-```
-
-Example:
-
-```
-welcome_message: |
-  Welcome to the Hiero ecosystem!
-  Thanks for contributing 🚀
-```
-
----
-
-# Docker Setup
-
-Build the container:
-
-```
+Docker Support
+Bash
 docker build -t hiero-workflow-probot .
-```
-
-Run the container:
-
-```
-docker run \
-  -e APP_ID=<app-id> \
-  -e PRIVATE_KEY=<pem-value> \
-  hiero-workflow-probot
-```
-
----
-
-# Contributing
-
-Contributions are welcome!
-
-If you find a bug or want to suggest improvements:
-
-1. Open an issue
-2. Submit a pull request
-
-Please read the contributing guide before submitting changes.
-
----
-
-# License
-
+docker run -e APP_ID=<id> -e PRIVATE_KEY=<key> hiero-workflow-probot
+📜 License
 ISC © 2026 Darshit Khandelwal
